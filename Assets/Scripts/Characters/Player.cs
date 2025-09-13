@@ -18,6 +18,15 @@ public class Player : MonoBehaviour
     [SerializeField] private Rigidbody _rigidbody;
     [SerializeField] private Animator _animator;
 
+    [Header("Damage Effect")]
+    [SerializeField] private bool _enableDamageEffect = true;
+    [SerializeField] private SpriteRenderer _spriteRenderer;
+    [SerializeField] private Color _damageColor = Color.red;
+    [SerializeField] private float _damageEffectDuration = 0.75f;
+
+    private Coroutine _damageCoroutine = null;
+    private Color _originalColor = Color.white;
+
     private bool _canMoveY = false;
     private Vector3 _lastPosition;
 
@@ -44,6 +53,20 @@ public class Player : MonoBehaviour
         {
             Debug.LogError("El Player requiere un Rigidbody. Asigna uno en el inspector o añade un componente Rigidbody.");
             enabled = false;
+        }
+
+        if (_spriteRenderer == null)
+        {
+            _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+            if (_spriteRenderer == null)
+            {
+                Debug.LogWarning("Player: No se encontró un SpriteRenderer asignado. Se intentó buscar uno automáticamente, pero no se encontró.");
+            }
+        }
+
+        if (_spriteRenderer != null)
+        {
+            _originalColor = _spriteRenderer.color;
         }
     }
 
@@ -89,7 +112,7 @@ public class Player : MonoBehaviour
 
     private void FlipCharacter(float horizontalInput)
     {
-        // Evitar escalado negativo que rompe BoxColliders.
+        // Evitar escalado negativo que rompe BoxColliders
         if (horizontalInput < 0)
         {
             transform.rotation = Quaternion.Euler(0f, 180f, 0f);
@@ -119,6 +142,43 @@ public class Player : MonoBehaviour
     private void PlayFootSteps()
     {
         Debug.Log("Se escuchó un sonido de pasos.");
+    }
+
+    public void TakeDamage(int amount)
+    {
+        if (_enableDamageEffect && _spriteRenderer != null)
+        {
+            // Detener cualquier efecto previo y reiniciar el temporizador
+            if (_damageCoroutine != null)
+            {
+                StopCoroutine(_damageCoroutine);
+                _damageCoroutine = null;
+            }
+            _damageCoroutine = StartCoroutine(ShowDamageEffect());
+        }
+
+        // Aquí puedes agregar lógica adicional para reducir la vida del jugador.
+    }
+
+    private IEnumerator ShowDamageEffect()
+    {
+        if (_spriteRenderer == null)
+            yield break;
+
+        // Aplicar color de daño
+        _spriteRenderer.color = _damageColor;
+
+        // Esperar la duración configurada (si es 0, esperar un frame)
+        if (_damageEffectDuration > 0f)
+            yield return new WaitForSeconds(_damageEffectDuration);
+        else
+            yield return null;
+
+        // Restaurar color original si sigue disponible
+        if (_spriteRenderer != null)
+            _spriteRenderer.color = _originalColor;
+
+        _damageCoroutine = null;
     }
 }
 

@@ -29,7 +29,16 @@ public class Enemy : MonoBehaviour
 	[SerializeField] private Transform _visualRoot;
 	[SerializeField] private Rigidbody _rigidbody;
 	[SerializeField] private Animator _animator;
-	
+
+	[Header("Damage Effect")]
+	[SerializeField] private bool _enableDamageEffect = true;
+	[SerializeField] private SpriteRenderer _spriteRenderer;
+	[SerializeField] private Color _damageColor = Color.red;
+	[SerializeField] private float _damageEffectDuration = 0.75f;
+
+	private Coroutine _damageCoroutine = null;
+	private Color _originalColor = Color.white;
+
 	private enum State { Patrol, Chase, Attack, Idle }
 	private State _state = State.Patrol;
 
@@ -52,11 +61,33 @@ public class Enemy : MonoBehaviour
 		if (_rigidbody == null)
 		{
 			_rigidbody = GetComponent<Rigidbody>();
+			if (_rigidbody == null)
+			{
+				Debug.LogWarning("Enemy: No se encontró un Rigidbody asignado. Se intentó buscar uno automáticamente, pero no se encontró.");
+			}
 		}
 
 		if (_animator == null)
 		{
 			_animator = GetComponent<Animator>();
+			if (_animator == null)
+			{
+				Debug.LogWarning("Enemy: No se encontró un Animator asignado. Se intentó buscar uno automáticamente, pero no se encontró.");
+			}
+		}
+
+		if (_spriteRenderer == null)
+		{
+			_spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+			if (_spriteRenderer == null)
+			{
+				Debug.LogWarning("Enemy: No se encontró un SpriteRenderer asignado. Se intentó buscar uno automáticamente, pero no se encontró.");
+			}
+		}
+
+		if (_spriteRenderer != null)
+		{
+			_originalColor = _spriteRenderer.color;
 		}
 
 		_isInitialized = true;
@@ -221,10 +252,42 @@ public class Enemy : MonoBehaviour
 			_animator.SetTrigger("isDamage");
 		}
 
+		if (_enableDamageEffect && _spriteRenderer != null)
+		{
+			// Detener cualquier efecto previo y reiniciar el temporizador
+			if (_damageCoroutine != null)
+			{
+				StopCoroutine(_damageCoroutine);
+				_damageCoroutine = null;
+			}
+			_damageCoroutine = StartCoroutine(ShowDamageEffect());
+		}
+
 		if (_health <= 0)
 		{
 			Die();
 		}
+	}
+
+	private IEnumerator ShowDamageEffect()
+	{
+		if (_spriteRenderer == null)
+			yield break;
+
+		// Aplicar color de daño
+		_spriteRenderer.color = _damageColor;
+
+		// Esperar la duración configurada (si es 0, esperar un frame)
+		if (_damageEffectDuration > 0f)
+			yield return new WaitForSeconds(_damageEffectDuration);
+		else
+			yield return null;
+
+		// Restaurar color original si sigue disponible
+		if (_spriteRenderer != null)
+			_spriteRenderer.color = _originalColor;
+
+		_damageCoroutine = null;
 	}
 
 	private void Die()
@@ -269,7 +332,14 @@ public class Enemy : MonoBehaviour
 		}
 
 		// Volver a perseguir o patrullar según si aún hay objetivo
-		_state = (_targetPlayer != null) ? State.Chase : State.Patrol;
+		if (_targetPlayer != null)
+		{
+			_state = State.Chase;
+		}
+		else
+		{
+			_state = State.Patrol;
+		}
 	}
 
 	private void OnDrawGizmosSelected()
