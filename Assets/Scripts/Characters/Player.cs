@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Collections;
 
 public class Player : MonoBehaviour
 {
@@ -11,7 +12,7 @@ public class Player : MonoBehaviour
 
     [Header("Attack")]
     [SerializeField] private GameObject _attackHitBox;
-
+    [SerializeField] private float _attackDuration = 1f;
 
     [Header("Dependencies")]
     [SerializeField] private Rigidbody _rigidbody;
@@ -59,6 +60,11 @@ public class Player : MonoBehaviour
             _lastPosition = _rigidbody.position;
     }
 
+    private void Update()
+    {
+        HandleAttack();
+    }
+
     private void Move()
     {
         if (_rigidbody == null || _movementHandler == null)
@@ -77,8 +83,8 @@ public class Player : MonoBehaviour
 
         FlipCharacter(input.x);
 
-        /*bool isWalking = Mathf.Abs(input.x) > Mathf.Epsilon || Mathf.Abs(input.y) > Mathf.Epsilon;
-        _animationHandler.UpdateWalkAnimation(isWalking);*/
+        bool isWalking = Mathf.Abs(input.x) > Mathf.Epsilon || Mathf.Abs(input.y) > Mathf.Epsilon;
+        _animator.SetBool("isWalk", isWalking);
     }
 
     private void FlipCharacter(float horizontalInput)
@@ -92,6 +98,27 @@ public class Player : MonoBehaviour
         {
             transform.rotation = Quaternion.Euler(0f, 0f, 0f);
         }
+    }
+
+    private void HandleAttack()
+    {
+        if (Input.GetButtonDown("Fire1") && _attackHitBox != null)
+        {
+            StartCoroutine(ActivateAttackHitBox());
+        }
+    }
+
+    private IEnumerator ActivateAttackHitBox()
+    {
+        _attackHitBox.SetActive(true);
+        _animator.SetTrigger("isAttack");
+        yield return new WaitForSeconds(_attackDuration);
+        _attackHitBox.SetActive(false);
+    }
+
+    private void PlayFootSteps()
+    {
+        Debug.Log("Se escuchó un sonido de pasos.");
     }
 }
 
@@ -146,4 +173,3 @@ public class MovementHandler
         _rigidbody.position = new Vector3(currentPosition.x, currentPosition.y, clampedZ);
     }
 }
-
